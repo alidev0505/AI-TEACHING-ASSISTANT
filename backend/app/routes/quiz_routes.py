@@ -1,0 +1,223 @@
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.models.models import db, User, Course, Quiz, Question, QuizSubmission
+from datetime import datetime
+
+quiz_bp = Blueprint('quiz', __name__)
+
+# 1. CREATE QUIZ (Teacher)
+# --- UPDATED CREATE QUIZ ROUTE ---
+@quiz_bp.route('/create', methods=['POST'])
+@jwt_required()
+def create_quiz():
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if user.role != 'teacher': return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json()
+    
+    try:
+        is_published = data.get('is_published', False)
+        deadline_str = data.get('deadline')
+        deadline = datetime.fromisoformat(deadline_str) if deadline_str else None
+
+        # ✅ CAST TO INT: Ensures the database receives the correct type
+        c_id = int(data['course_id'])
+
+        new_quiz = Quiz(
+            course_id=c_id,
+            title=data['title'],
+            description=data.get('description', ''),
+            time_limit_minutes=int(data.get('time_limit', 10)),
+            is_published=is_published,
+            deadline=deadline
+        )
+        db.session.add(new_quiz)
+        db.session.flush() # Gets the ID for questions
+
+        for q in data['questions']:
+            new_q = Question(
+                quiz_id=new_quiz.id,
+                text=q['text'],
+                option_a=q['options']['A'],
+                option_b=q['options']['B'],
+                option_c=q['options']['C'],
+                option_d=q['options']['D'],
+                correct_option=q['correct']
+            )
+            db.session.add(new_q)
+        
+        db.session.commit() # ✅ FINAL DISK WRITE
+        print(f"SUCCESS: Quiz '{new_quiz.title}' saved to Course {c_id}")
+        return jsonify({'message': 'Quiz created successfully!', 'quiz_id': new_quiz.id}), 201
+
+    except Exception as e:
+        db.session.rollback() # ✅ UNDO on failure
+        print(f"DATABASE ERROR during quiz creation: {e}")
+        return jsonify({'error': 'Database failure. Check server logs.'}), 500
+    
+# 2. GET QUIZ (Student - Start Exam)
+@quiz_bp.route('/<int:quiz_id>', methods=['GET'])
+@jwt_required()
+def get_quiz(quiz_id):
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz: return jsonify({'error': 'Not found'}), 404
+
+    # ✅ FIX: Move the check here. Students cannot access unpublished quizzes.
+    if not quiz.is_published:
+        return jsonify({'error': 'This quiz has not been assigned yet.'}), 403
+
+    # Check if already attempted
+    user_id = int(get_jwt_identity())
+    existing = QuizSubmission.query.filter_by(quiz_id=quiz_id, student_id=user_id).first()
+    if existing:
+        return jsonify({'error': 'You have already attempted this quiz.'}), 400
+
+    questions = []
+    for q in quiz.questions:
+        questions.append({
+            'id': q.id,
+            'text': q.text,
+            'options': {'A': q.option_a, 'B': q.option_b, 'C': q.option_c, 'D': q.option_d}
+        })
+
+    return jsonify({
+        'quiz': {
+            'id': quiz.id,
+            'title': quiz.title,
+            'time_limit': quiz.time_limit_minutes,
+            'deadline': quiz.deadline.isoformat() if quiz.deadline else None,
+            'questions': questions
+        }
+    }), 200
+
+# ✅ NEW: Fetch all quizzes for a specific course (Required by CourseDetail.jsx)
+@quiz_bp.route('/course/<int:course_id>', methods=['GET'])
+@jwt_required()
+def get_course_quizzes(course_id):
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    
+    if user.role == 'teacher':
+        quizzes = Quiz.query.filter_by(course_id=course_id).all()
+    else:
+        quizzes = Quiz.query.filter_by(course_id=course_id, is_published=True).all()
+        
+    return jsonify({
+        'quizzes': [{
+            'id': q.id,
+            'title': q.title,
+            'time_limit': q.time_limit_minutes,
+            'is_published': q.is_published,
+            'deadline': q.deadline.isoformat() if q.deadline else None
+        } for q in quizzes]
+    }), 200
+
+# ✅ NEW: Fetch published quizzes for student dashboard (Required by StudentDashboard.jsx)
+@quiz_bp.route('/student/available-quizzes/<int:course_id>', methods=['GET'])
+@jwt_required()
+def get_student_available_quizzes(course_id):
+    # Log for debugging - check your terminal when student loads dashboard
+    print(f"DEBUG: Student checking for quizzes in Course ID: {course_id}")
+    
+    # Fetch quizzes that are published AND belong to this course
+    quizzes = Quiz.query.filter_by(course_id=course_id, is_published=True).all()
+    
+    print(f"DEBUG: Found {len(quizzes)} published quizzes")
+    return jsonify([{
+        "id": q.id,
+        "title": q.title,
+        "time_limit": q.time_limit_minutes,
+        "deadline": q.deadline.isoformat() if q.deadline else None
+    } for q in quizzes]), 200
+
+@quiz_bp.route('/<int:quiz_id>/assign', methods=['POST'])
+@jwt_required()
+def assign_existing_quiz(quiz_id):
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if user.role != 'teacher': return jsonify({'error': 'Unauthorized'}), 403
+
+    quiz = Quiz.query.get_or_404(quiz_id)
+    data = request.get_json()
+    
+    quiz.is_published = True
+    if data.get('deadline'):
+        quiz.deadline = datetime.fromisoformat(data.get('deadline'))
+    
+    db.session.commit()
+    return jsonify({'message': 'Quiz assigned to students!'}), 200
+
+# 3. SUBMIT QUIZ
+@quiz_bp.route('/submit', methods=['POST'])
+@jwt_required()
+def submit_quiz():
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+    quiz_id = data['quiz_id']
+    answers = data['answers'] 
+
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz: return jsonify({'error': 'Quiz not found'}), 404
+
+    score = 0
+    total = len(quiz.questions)
+    for q in quiz.questions:
+        if answers.get(str(q.id)) == q.correct_option:
+            score += 1
+    
+    final_score = (score / total) * 100 if total > 0 else 0
+    submission = QuizSubmission(quiz_id=quiz_id, student_id=user_id, score=final_score, total_questions=total)
+    db.session.add(submission)
+    db.session.commit()
+    return jsonify({'message': 'Submitted', 'score': final_score, 'correct': score, 'total': total}), 200
+
+# 4. GET QUIZ RESULTS
+@quiz_bp.route('/<int:quiz_id>/results', methods=['GET'])
+@jwt_required()
+def get_quiz_results(quiz_id):
+    quiz = Quiz.query.get_or_404(quiz_id)
+    submissions = QuizSubmission.query.filter_by(quiz_id=quiz_id).all()
+    results = []
+    for sub in submissions:
+        student = User.query.get(sub.student_id)
+        results.append({
+            'student_name': student.username,
+            'score': sub.score,
+            'total': sub.total_questions,
+            'date': sub.submitted_at.strftime('%Y-%m-%d %H:%M')
+        })
+    return jsonify({'quiz_title': quiz.title, 'results': results}), 200
+
+# 5. GET QUIZ ANALYTICS
+@quiz_bp.route('/<int:quiz_id>/stats', methods=['GET'])
+@jwt_required()
+def get_quiz_stats(quiz_id):
+    quiz = Quiz.query.get_or_404(quiz_id)
+    submissions = QuizSubmission.query.filter_by(quiz_id=quiz_id).all()
+    
+    if not submissions:
+        return jsonify({
+            'title': quiz.title, 'is_published': quiz.is_published, 'deadline': quiz.deadline.isoformat() if quiz.deadline else None,
+            'total_students': 0, 'average_score': 0, 'highest_score': 0, 'student_scores': []
+        }), 200
+
+    total_scores = [sub.score for sub in submissions]
+    student_data = []
+    for sub in submissions:
+        student = User.query.get(sub.student_id)
+        student_data.append({
+            'name': student.username, 'email': student.email, 'score': sub.score,
+            'submitted_at': sub.submitted_at.strftime('%Y-%m-%d %H:%M')
+        })
+    student_data.sort(key=lambda x: x['score'], reverse=True)
+
+    return jsonify({
+        'title': quiz.title,
+        'is_published': quiz.is_published,
+        'deadline': quiz.deadline.isoformat() if quiz.deadline else None,
+        'total_students': len(submissions),
+        'average_score': round(sum(total_scores) / len(total_scores), 1),
+        'highest_score': max(total_scores),
+        'student_scores': student_data
+    }), 200
