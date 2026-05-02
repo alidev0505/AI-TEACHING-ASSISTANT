@@ -37,12 +37,10 @@ const Navbar = ({ isTransparent = false }) => {
   const initials = user?.username?.slice(0, 2).toUpperCase() || 'U';
 
   // --- DYNAMIC STYLING LOGIC ---
-  // If we are NOT on the landing page (isTransparent=false), it should always be solid white.
-  // If we ARE on landing page, it is transparent until we scroll or open the mobile menu.
   const shouldBeSolid = !isTransparent || scrolled || mobileMenuOpen;
   
   const navBg = shouldBeSolid ? '#ffffff' : 'transparent';
-  const navText = shouldBeSolid ? '#1e293b' : '#3b2a2a'; // Slate-800 or pure white
+  const navText = shouldBeSolid ? '#1e293b' : '#ffffff'; 
   const navBorder = shouldBeSolid ? '#e2e8f0' : 'transparent';
 
   return (
@@ -102,25 +100,47 @@ const Navbar = ({ isTransparent = false }) => {
           )}
         </div>
 
-        {/* MOBILE TOGGLE */}
-        <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', zIndex: 1100 }}>
-           <div style={{ width: '25px', height: '2px', background: navText, marginBottom: '6px', transition: '0.3s', transform: mobileMenuOpen ? 'rotate(45deg) translate(6px, 6px)' : 'none' }}></div>
-           <div style={{ width: '25px', height: '2px', background: navText, transition: '0.3s', opacity: mobileMenuOpen ? 0 : 1 }}></div>
-           <div style={{ width: '25px', height: '2px', background: navText, marginTop: '6px', transition: '0.3s', transform: mobileMenuOpen ? 'rotate(-45deg) translate(6px, -6px)' : 'none' }}></div>
+        {/* MOBILE TOGGLE BUTTON */}
+        <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', zIndex: 1100, padding: '5px' }}>
+           <div style={{ width: '24px', height: '2px', background: navText, marginBottom: '5px', transition: 'all 0.3s ease', transform: mobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }}></div>
+           <div style={{ width: '24px', height: '2px', background: navText, marginBottom: '5px', transition: 'all 0.3s ease', opacity: mobileMenuOpen ? 0 : 1 }}></div>
+           <div style={{ width: '24px', height: '2px', background: navText, transition: 'all 0.3s ease', transform: mobileMenuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }}></div>
         </button>
       </div>
 
       {/* MOBILE MENU OVERLAY */}
       <div style={{ 
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-        background: 'black', display: 'flex', flexDirection: 'column', 
+        background: '#ffffff', // Changed to white for readability
+        display: 'flex', flexDirection: 'column', 
         padding: '100px 30px', gap: '25px', zIndex: 1050,
         transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.3s ease-in-out'
+        transition: 'transform 0.3s ease-in-out',
+        boxShadow: mobileMenuOpen ? '-5px 0 20px rgba(0,0,0,0.1)' : 'none'
       }}>
-          <Link to="/" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', textDecoration: 'none' }}>Home</Link>
-          <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', textDecoration: 'none' }}>Log In</Link>
-          <Link to="/signup" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1d4ed8', textDecoration: 'none' }}>Get Started Free</Link>
+          
+          {user ? (
+            // WHAT LOGGED IN USERS SEE ON MOBILE
+            <>
+              <Link to={user.role === 'teacher' ? '/teacher' : user.role === 'admin' ? '/admin' : '/student'} onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#0f172a', textDecoration: 'none' }}>
+                Dashboard
+              </Link>
+              <Link to="/profile" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#0f172a', textDecoration: 'none' }}>
+                Profile
+              </Link>
+              <button onClick={() => { logoutUser(); setMobileMenuOpen(false); }} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#ef4444', textDecoration: 'none', background: 'none', border: 'none', textAlign: 'left', padding: 0, cursor: 'pointer' }}>
+                Logout
+              </button>
+            </>
+          ) : (
+            // WHAT GUEST USERS SEE ON MOBILE
+            <>
+              <Link to="/" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#0f172a', textDecoration: 'none' }}>Home</Link>
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#0f172a', textDecoration: 'none' }}>Log In</Link>
+              <Link to="/signup" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#1d4ed8', textDecoration: 'none' }}>Get Started Free</Link>
+            </>
+          )}
+
       </div>
 
       <style>{`
