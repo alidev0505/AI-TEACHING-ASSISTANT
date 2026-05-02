@@ -113,7 +113,7 @@ const Navbar = ({ isTransparent = false }) => {
       {/* MOBILE MENU OVERLAY */}
       <div style={{ 
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-        background: 'white', display: 'flex', flexDirection: 'column', 
+        background: 'black', display: 'flex', flexDirection: 'column', 
         padding: '100px 30px', gap: '25px', zIndex: 1050,
         transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.3s ease-in-out'

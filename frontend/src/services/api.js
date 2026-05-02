@@ -1,10 +1,13 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://shopping-sheet-behavior-teaches.trycloudflare.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true' // <--- ADD THIS VIP PASS
+  },
 });
 
 api.interceptors.request.use(
@@ -158,12 +161,15 @@ export const deleteAnnouncement = (id) => api.delete(`/admin/announcement/${id}`
 export const uploadSchedule = async (formData) => {
     const token = localStorage.getItem('token'); 
     
-    const response = await fetch('http://127.0.0.1:5000/api/admin/upload-schedule', {
+    const response = await fetch(`${API_BASE_URL}/admin/upload-schedule`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Bypass-Tunnel-Reminder': 'true' // <--- ADD THIS HERE TOO
+        },
         body: formData
     });
-
+    
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Upload failed');
     return { data }; 
