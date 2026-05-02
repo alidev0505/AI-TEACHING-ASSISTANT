@@ -40,7 +40,7 @@ const Navbar = ({ isTransparent = false }) => {
   const shouldBeSolid = !isTransparent || scrolled || mobileMenuOpen;
   
   const navBg = shouldBeSolid ? '#ffffff' : 'transparent';
-  const navText = shouldBeSolid ? '#1e293b' : '#3b2a2a'; // Slate-800 or pure white
+  const navText = shouldBeSolid ? '#1e293b' : '#ffffff'; 
   const navBorder = shouldBeSolid ? '#e2e8f0' : 'transparent';
 
   return (
@@ -50,7 +50,8 @@ const Navbar = ({ isTransparent = false }) => {
       height: '72px',
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
       fontFamily: "'Inter', sans-serif",
-      backdropFilter: shouldBeSolid ? 'blur(12px)' : 'none',
+      // FIX 1: Turn off the blur effect when the menu is open so it isn't trapped
+      backdropFilter: (shouldBeSolid && !mobileMenuOpen) ? 'blur(12px)' : 'none',
       transition: 'all 0.3s ease',
       display: 'flex', alignItems: 'center'
     }}>
@@ -100,24 +101,27 @@ const Navbar = ({ isTransparent = false }) => {
           )}
         </div>
 
-        {/* MOBILE TOGGLE */}
-        <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', zIndex: 1100 }}>
-           <div style={{ width: '25px', height: '2px', background: navText, marginBottom: '6px', transition: '0.3s', transform: mobileMenuOpen ? 'rotate(45deg) translate(6px, 6px)' : 'none' }}></div>
-           <div style={{ width: '25px', height: '2px', background: navText, transition: '0.3s', opacity: mobileMenuOpen ? 0 : 1 }}></div>
-           <div style={{ width: '25px', height: '2px', background: navText, marginTop: '6px', transition: '0.3s', transform: mobileMenuOpen ? 'rotate(-45deg) translate(6px, -6px)' : 'none' }}></div>
+        {/* MOBILE TOGGLE BUTTON */}
+        <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', zIndex: 1100, padding: '5px' }}>
+           <div style={{ width: '24px', height: '2px', background: navText, marginBottom: '5px', transition: 'all 0.3s ease', transform: mobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }}></div>
+           <div style={{ width: '24px', height: '2px', background: navText, marginBottom: '5px', transition: 'all 0.3s ease', opacity: mobileMenuOpen ? 0 : 1 }}></div>
+           <div style={{ width: '24px', height: '2px', background: navText, transition: 'all 0.3s ease', transform: mobileMenuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }}></div>
         </button>
       </div>
 
-      {/* MOBILE MENU OVERLAY - FIXED COLORS & LOGIC */}
+      {/* MOBILE MENU OVERLAY */}
       <div style={{ 
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-        background: '#ffffff', // Sleek white background
+        position: 'fixed', top: 0, left: 0, right: 0,
+        height: '100vh',         // FIX 2: Explicitly tell it to cover 100% of the screen height
+        boxSizing: 'border-box', // FIX 3: Keep the padding contained within that 100vh
+        background: '#ffffff',
         display: 'flex', flexDirection: 'column', 
         padding: '100px 30px', gap: '25px', zIndex: 1050,
         transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.3s ease-in-out',
         boxShadow: mobileMenuOpen ? '-10px 0 30px rgba(0,0,0,0.1)' : 'none'
       }}>
+          
           {user ? (
             <>
               <Link to={user.role === 'teacher' ? '/teacher' : user.role === 'admin' ? '/admin' : '/student'} onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#1e293b', textDecoration: 'none' }}>Dashboard</Link>
@@ -131,6 +135,7 @@ const Navbar = ({ isTransparent = false }) => {
               <Link to="/signup" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '1.4rem', fontWeight: '700', color: '#1d4ed8', textDecoration: 'none' }}>Get Started Free</Link>
             </>
           )}
+
       </div>
 
       <style>{`
