@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://publications-preview-mods-stocks.trycloudflare.com/api';
+const API_BASE_URL = 'https://belfast-contributing-reverse-dollars.trycloudflare.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
