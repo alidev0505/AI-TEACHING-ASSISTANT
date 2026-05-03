@@ -13,26 +13,22 @@ from app.routes.auth import auth_bp
 from app.routes.upload import upload_bp
 from app.routes.content import content_bp
 from app.routes.dashboard import dashboard_bp
-# ✅ IMPORT THE NEW STUDENT BLUEPRINT
 from app.routes.student import student_bp 
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # 1. DATABASE FOLDER FIX
-    try:
-        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
-        if db_uri.startswith('sqlite:///'):
-            path = db_uri.replace('sqlite:///', '')
-            folder = os.path.dirname(path)
-            if folder and not os.path.exists(folder):
-                os.makedirs(folder)
-    except:
-        pass
-
-    # 2. CORS FIX (CLEAN VERSION)
-    CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+    # 1. UPDATED CORS FIX
+    # Added your Vercel URL so the browser allows the login request
+    CORS(app, resources={
+        r"/*": {
+            "origins": [
+                "http://localhost:5173", 
+                "https://ai-teaching-assistant-ecru.vercel.app"
+            ]
+        }
+    }, supports_credentials=True)
 
     # Initialize Extensions
     JWTManager(app)
@@ -46,28 +42,28 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(notify_bp, url_prefix='/api/notifications')
     app.register_blueprint(quiz_bp, url_prefix='/api/quiz')
-    
-    # ✅ REGISTER THE NEW BLUEPRINT
     app.register_blueprint(student_bp, url_prefix='/api/student')
 
     with app.app_context():
+        # create_all() is safe; it won't delete your existing Supabase data
         db.create_all()
-        # Auto-migrate: add new columns if they don't exist yet (safe for SQLite)
+        
+        # 2. CLEANER MIGRATION (PostgreSQL Compatible)
+        # Removed PRAGMA to stop the syntax errors in your logs
         try:
             from sqlalchemy import text
             with db.engine.connect() as conn:
-                existing = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+                # This block will now silently skip if columns exist in PostgreSQL
                 migrations = {
-                    'department':      "ALTER TABLE users ADD COLUMN department VARCHAR(100)",
-                    'bio':             "ALTER TABLE users ADD COLUMN bio TEXT",
-                    'profile_picture': "ALTER TABLE users ADD COLUMN profile_picture TEXT",
+                    'department':      "ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
+                    'bio':             "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT",
+                    'profile_picture': "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture TEXT",
                 }
                 for col, sql in migrations.items():
-                    if col not in existing:
-                        conn.execute(text(sql))
-                        conn.commit()
-                        print(f"✅ Migrated: added '{col}' column to users table")
+                    conn.execute(text(sql))
+                conn.commit()
         except Exception as e:
-            print(f"⚠️  Auto-migration warning: {e}")
+            # We print this but don't let it stop the server
+            print(f"ℹ️ Migration info: {e}")
 
     return app
