@@ -4,9 +4,9 @@ import io
 import os
 import re
 import tempfile
-from docx2pdf import convert
+#from docx2pdf import convert
 from datetime import datetime
-import pythoncom 
+#import pythoncom 
 
 class ExportService:
 

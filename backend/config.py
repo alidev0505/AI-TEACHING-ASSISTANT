@@ -19,7 +19,8 @@ class Config:
 
     # 3. DATABASE CONFIGURATION
     # Force DB to be at: backend/instance/school.db
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(INSTANCE_DIR, 'school.db')
+    # Use the connection string with port 6543 for better stability
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:Admin%40super12345@db.tycwcajnnuqdxjvtqeua.supabase.co:6543/postgres?sslmode=require'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # 4. FOLDER PATHS
