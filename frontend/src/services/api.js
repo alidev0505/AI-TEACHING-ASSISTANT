@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://shopping-sheet-behavior-teaches.trycloudflare.com/api';
+const API_BASE_URL = 'https://behavior-remedies-demand-seasons.trycloudflare.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

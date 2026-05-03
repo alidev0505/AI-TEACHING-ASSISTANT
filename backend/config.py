@@ -3,24 +3,19 @@ from datetime import timedelta
 
 class Config:
     # 1. INTELLIGENT PATH DETECTION
-    # Get the folder where this file (config.py) lives
     CURRENT_FILE_DIR = os.path.abspath(os.path.dirname(__file__))
     
-    # Check if we are inside 'backend/app' or just 'backend'
     if CURRENT_FILE_DIR.endswith('app'):
-        # If in 'app', go up one level to find 'backend'
         BACKEND_DIR = os.path.dirname(CURRENT_FILE_DIR)
     else:
-        # If already in 'backend', stay here
         BACKEND_DIR = CURRENT_FILE_DIR
 
     # 2. DEFINE THE INSTANCE FOLDER
     INSTANCE_DIR = os.path.join(BACKEND_DIR, 'instance')
 
     # 3. DATABASE CONFIGURATION
-    # Force DB to be at: backend/instance/school.db
-    # Use the connection string with port 6543 for better stability
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:Admin%40super12345@db.tycwcajnnuqdxjvtqeua.supabase.co:6543/postgres?sslmode=require'
+    # UPDATED: Using the IPv4 Pooler Hostname to fix the Colab connection error
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres.tycwcajnnuqdxjvtqeua:Admin%40super12345@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # 4. FOLDER PATHS
@@ -36,7 +31,7 @@ class Config:
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024
     ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
 
-    # 6. EMAIL / SMTP (for forgot-password & verification emails)
+    # 6. EMAIL / SMTP
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
