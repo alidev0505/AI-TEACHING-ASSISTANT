@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://belfast-contributing-reverse-dollars.trycloudflare.com/api';
+const API_BASE_URL = 'https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
