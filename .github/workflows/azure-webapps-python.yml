@@ -42,8 +42,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # We force install directly into a folder named 'antenv'
-          pip install -r backend/requirements.txt --target="antenv/lib/python3.11/site-packages"
+          # Install libraries directly into the current directory
+          pip install -r backend/requirements.txt --target="."
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
