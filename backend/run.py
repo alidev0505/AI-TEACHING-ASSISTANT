@@ -1,10 +1,11 @@
 import os
 import sys
 
-# Keep this dynamic pathing!
+# Update this section in your backend/run.py
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
-lib_path = os.path.join(project_root, '.python_packages', 'lib', 'site-packages')
+# Look for 'python_libs' instead of '.python_packages'
+lib_path = os.path.join(project_root, 'python_libs', 'lib', 'site-packages')
 
 sys.path.insert(0, lib_path)
 sys.path.insert(0, project_root)
