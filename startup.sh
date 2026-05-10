@@ -4,14 +4,13 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 echo "🚀 App Root detected at: $SCRIPT_DIR"
 
-# Set the PYTHONPATH to include the standard Azure environment
+# Set the PYTHONPATH
 export PYTHONPATH=$PYTHONPATH:$SCRIPT_DIR/backend
 
-# Move to the backend folder relative to this script
+# Move to the backend folder
 cd "$SCRIPT_DIR/backend"
 
-echo "🚀 Starting Gunicorn..."
-gunicorn --bind=0.0.0.0:8000 --timeout 600 run:app
-# Build Trigger: 05/11/2026 01:44:12
-
-# Timeout Fix Applied: 05/11/2026 02:01:34
+echo "🚀 Starting Gunicorn with 1 worker to save RAM..."
+# --workers 1 is critical for Torch/Transformers on small servers
+# --timeout 1200 gives the AI models 20 minutes to load into memory
+gunicorn --bind=0.0.0.0:8000 --workers 1 --timeout 1200 run:app
