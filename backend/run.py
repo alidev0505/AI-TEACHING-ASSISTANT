@@ -19,3 +19,4 @@ os.makedirs(os.path.join(basedir, app.config.get('VECTOR_DB_PATH', 'vector_db'))
 if __name__ == '__main__':
     # On Azure, Gunicorn handles the port, so this is mainly for local testing
     app.run(debug=True, port=5000, use_reloader=False)
+# Force Deployment: 05/11/2026 00:55:56
