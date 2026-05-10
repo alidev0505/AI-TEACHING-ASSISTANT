@@ -18,11 +18,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          # Only upload the backend and essential root files
-          path: |
-            .
-            !python_libs
-            !.python_packages
+          path: .  # Upload everything in the root
 
   deploy:
     runs-on: ubuntu-latest
@@ -38,4 +34,3 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
