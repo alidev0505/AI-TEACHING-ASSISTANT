@@ -22,16 +22,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # We use 'python_libs' (NO DOT) so GitHub doesn't hide it
           pip install -r backend/requirements.txt --platform manylinux2014_x86_64 --only-binary=:all: --target="python_libs/lib/site-packages"
           chmod +x startup.sh
-          git update-index --chmod=+x startup.sh
+          # Create a zip of everything in the current directory
+          zip -r release.zip .
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: .
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -41,10 +41,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
-          path: .
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: release.zip
