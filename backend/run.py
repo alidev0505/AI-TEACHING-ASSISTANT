@@ -1,7 +1,7 @@
 import os
 import sys
 
-# Keep this! It's why we finally got past the "ModuleNotFound" error
+# Keep this dynamic pathing!
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 lib_path = os.path.join(project_root, '.python_packages', 'lib', 'site-packages')
