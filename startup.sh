@@ -13,3 +13,5 @@ cd "$SCRIPT_DIR/backend"
 echo "🚀 Starting Gunicorn..."
 gunicorn --bind=0.0.0.0:8000 --timeout 600 run:app
 # Build Trigger: 05/11/2026 01:44:12
+
+# Timeout Fix Applied: 05/11/2026 02:01:34
