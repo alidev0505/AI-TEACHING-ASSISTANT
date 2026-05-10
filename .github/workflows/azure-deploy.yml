@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04  # Change from ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +37,7 @@ jobs:
           path: release.zip
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: build
     steps:
       - name: Download artifact from build job

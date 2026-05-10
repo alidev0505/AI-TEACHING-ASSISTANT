@@ -1,15 +1,11 @@
 import os
 import sys
 
-# --- DYNAMIC LIBRARY INJECTION ---
-# 1. Get the directory where run.py is currently located
+# Keep this! It's why we finally got past the "ModuleNotFound" error
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# 2. Go up one level to the project root
 project_root = os.path.dirname(current_dir)
-# 3. Target the .python_packages folder relative to the root
 lib_path = os.path.join(project_root, '.python_packages', 'lib', 'site-packages')
 
-# 4. Insert these into the system path so Python finds your libraries first
 sys.path.insert(0, lib_path)
 sys.path.insert(0, project_root)
 # --------------------------------
