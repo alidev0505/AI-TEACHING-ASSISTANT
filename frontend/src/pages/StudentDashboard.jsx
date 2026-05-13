@@ -41,9 +41,9 @@ const StudentDashboard = () => {
     const token = localStorage.getItem('token');
     try {
       const quizPromises = courseIds.map(id =>
-        fetch(`http://127.0.0.1:5000/api/quiz/student/available-quizzes/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).then(res => res.ok ? res.json() : [])
+        fetch(`https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/quiz/student/available-quizzes/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => res.ok ? res.json() : [])
       );
       const results = await Promise.all(quizPromises);
       setPendingQuizzes(results.flat());

@@ -60,6 +60,7 @@ const AdminBatchUpload = ({ onUploadSuccess }) => {
         setLoading(true);
         try {
             const res = await uploadSchedule(formData);
+            console.log("Full Upload Report:", res.data.report);
             setReport(res.data.report);
             
             if (onUploadSuccess) onUploadSuccess();

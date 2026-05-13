@@ -13,9 +13,9 @@ const StudentAttendance = () => {
   const fetchStats = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/content/attendance/student/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/content/attendance/student/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
       const data = await res.json();
       if (res.ok) setStats(data.stats);
     } catch (err) {

@@ -16,7 +16,7 @@ const TakeQuiz = () => {
     const fetchQuiz = async () => {
       const token = localStorage.getItem('token');
       try {
-        const res = await fetch(`http://127.0.0.1:5000/api/quiz/${quizId}`, {
+        const res = await fetch(`https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/quiz/${quizId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -77,7 +77,7 @@ const TakeQuiz = () => {
     setSubmitting(true);
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch('http://127.0.0.1:5000/api/quiz/submit', {
+        const res = await fetch('https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/quiz/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ quiz_id: quizId, answers: answers })

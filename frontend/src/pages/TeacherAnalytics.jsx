@@ -18,7 +18,7 @@ const TeacherAnalytics = () => {
   const fetchAnalytics = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://127.0.0.1:5000/api/content/analytics/${courseId}`, {
+      const res = await fetch(`https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/content/analytics/${courseId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const result = await res.json();

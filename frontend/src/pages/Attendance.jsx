@@ -33,7 +33,7 @@ const Attendance = () => {
     const fetchCourseDetails = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`http://127.0.0.1:5000/api/content/course/${courseId}`, {
+            const res = await fetch(`https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/content/course/${courseId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -86,7 +86,7 @@ const Attendance = () => {
             student_id: parseInt(sid), status: status
         }));
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/content/attendance/mark', {
+            const res = await fetch('https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/content/attendance/mark', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ course_id: courseId, date: date, session_number: session, records: records })
@@ -99,11 +99,11 @@ const Attendance = () => {
         if (!window.confirm("FINAL WARNING: Cannot edit after locking.")) return;
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('http://127.0.0.1:5000/api/content/attendance/lock', {
+            const res = await fetch('https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/content/attendance/lock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ course_id: courseId })
-            });
+        });
             if (res.ok) { setIsLocked(true); alert("🔒 Sheet Locked"); }
         } catch (err) { console.error(err); }
     };

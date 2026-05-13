@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUsers, updateUserRole, deleteUser } from '../../services/api';
+import { getUsers, updateUserRole, deleteUser, getAdminCourses, deleteCourse } from '../../services/api';
 import AdminBatchUpload from './AdminBatchUpload'; 
 
 const AdminUsers = () => {
@@ -42,17 +42,11 @@ const AdminUsers = () => {
 
   const fetchCoursesData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://127.0.0.1:5000/api/admin/courses', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCourses(data.courses || []);
-        return data;
-      }
-    } catch (err) { console.error(err); }
-  };
+        const res = await getAdminCourses(); // This uses your Azure URL automatically
+        setCourses(res.data.courses || []);
+        return res.data;
+  } catch (err) { console.error(err); }
+};
 
   /* ===================== FILTER & PAGINATION LOGIC ===================== */
   
@@ -99,16 +93,16 @@ const AdminUsers = () => {
   const handleDeleteCourse = async (courseId, courseName) => {
     if (!window.confirm(`DELETE COURSE: "${courseName}"?\n\nThis will delete ALL quizzes, assignments, and grades associated with it.`)) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://127.0.0.1:5000/api/admin/course/${courseId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
+      const res = await deleteCourse(courseId); 
+      if (res.status === 200 || res.status === 204) {
         setCourses(courses.filter(c => c.id !== courseId));
-      } else { alert("Failed to delete course"); }
-    } catch (err) { console.error(err); }
-  };
+      } else { 
+        alert("Failed to delete course"); 
+      }
+    } catch (err) { 
+      console.error(err); 
+    }
+  }; // <--- ADDED MISSING CLOSING BRACES HERE
 
   const getRoleStyle = (role) => {
     switch(role) {

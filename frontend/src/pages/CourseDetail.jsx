@@ -138,7 +138,7 @@ const fetchLiveSessions = async () => {
   const fetchQuizzes = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://127.0.0.1:5000/api/quiz/course/${id}`, {
+      const res = await fetch(`https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/quiz/course/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -150,7 +150,7 @@ const fetchLiveSessions = async () => {
     if (!window.confirm("Publish this quiz and assign it to all students?")) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://127.0.0.1:5000/api/quiz/${quizId}/assign`, {
+      const res = await fetch(`https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/quiz/${quizId}/assign`, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -248,7 +248,7 @@ const fetchLiveSessions = async () => {
     if (!window.confirm("DANGER: Permanently delete this course and all data?")) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://127.0.0.1:5000/api/content/courses/${id}`, {
+      const res = await fetch(`https://ai-teaching-backend-bcefdeexdfg4decz.westeurope-01.azurewebsites.net/api/content/courses/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
