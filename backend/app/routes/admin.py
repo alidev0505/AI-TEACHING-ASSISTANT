@@ -67,6 +67,8 @@ def check_time_conflict(teacher_id, day, new_in_str, new_out_str):
 
 # --- MAIN UPLOAD ROUTE ---
 
+# --- UPDATE IN admin.py ---
+
 @admin_bp.route('/upload-schedule', methods=['POST'])
 @jwt_required()
 def upload_schedule_csv():
@@ -74,128 +76,95 @@ def upload_schedule_csv():
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-
-    # Read CSV
+    
+    # 1. Read and Decode with 'utf-8-sig' to remove Excel's BOM markers
     try:
-        # 1. Read raw bytes & Handle Encoding (Robust Fix)
         file_bytes = file.stream.read()
-        try:
-            decoded_file = file_bytes.decode('utf-8-sig')
-        except UnicodeDecodeError:
-            decoded_file = file_bytes.decode('latin-1')
-
+        decoded_file = file_bytes.decode('utf-8-sig')
         stream = io.StringIO(decoded_file, newline=None)
+        # Use strip on keys to handle "Course Code " vs "Course Code"
         csv_input = csv.DictReader(stream)
-
     except Exception as e:
         return jsonify({'error': f'Failed to read CSV: {str(e)}'}), 400
 
-    report = {
-        'created_teachers': [],
-        'courses_assigned': 0,
-        'conflicts': [],
-        'errors': []
-    }
+    report = {'created_teachers': [], 'courses_assigned': 0, 'conflicts': [], 'errors': []}
 
     try:
         for row_num, row in enumerate(csv_input, start=1):
-            # 1. GET DATA
-            instructor_name = row.get('Instructor', '').strip()
-            institute_code = row.get('Course Code', '').strip() # CSC 101
-            course_name = row.get('Course Name', '').strip()    # "App of ICT" or "App of ICT - Lab"
-            
-            day = row.get('Day', '').strip()
-            time_in = row.get('Time In', '').strip()
-            time_out = row.get('Time Out', '').strip()
-            semester_val = row.get('Semester', '').strip() # I-A
+            # Clean keys to be safe against trailing spaces in CSV headers
+            clean_row = {k.strip(): v.strip() for k, v in row.items() if k}
 
-            # 2. HANDLE INSTRUCTOR (Create/Find Teacher)
+            instructor_name = clean_row.get('Instructor')
+            institute_code = clean_row.get('Course Code')
+            course_name = clean_row.get('Course Name')
+            
+            # Skip empty rows
+            if not instructor_name or not course_name:
+                continue
+
+            # 2. TEACHER LOGIC
             email = generate_email(instructor_name)
             teacher = User.query.filter_by(email=email).first()
             
             if not teacher:
-                # 🛠️ CUSTOM PASSWORD LOGIC: $Name@Year
                 current_year = datetime.now().year
-                
-                # Remove spaces and dots (e.g., "Mr. Asif Khan" -> "MrAsifKhan")
                 clean_name_pass = instructor_name.replace(" ", "").replace(".", "")
-                
-                # Final Password: $MrAsifKhan@2025
                 temp_pass = f"${clean_name_pass}@{current_year}"
 
                 teacher = User(
                     username=instructor_name,
                     email=email,
                     role='teacher',
-                    is_verified=True,  # Auto-verified: credentials are admin-generated
+                    is_verified=True,
                     password_hash=generate_password_hash(temp_pass)
                 )
                 db.session.add(teacher)
-                db.session.commit()
+                db.session.flush() # Get ID without committing entire batch
                 
                 report['created_teachers'].append({
-                    'name': instructor_name,
-                    'email': email,
-                    'password': temp_pass
+                    'name': instructor_name, 'email': email, 'password': temp_pass
                 })
 
-            # 3. CHECK CONFLICTS
-            conflict = check_time_conflict(teacher.id, day, time_in, time_out)
-            if conflict:
-                report['conflicts'].append(f"{instructor_name} (Row {row_num}): {conflict}")
-                continue 
-
-            # 4. CREATE OR UPDATE COURSE
-            # KEY FIX: We check existance by NAME and SEMESTER, not by code (since code is shared)
+            # 3. COURSE LOGIC
+            # Use Course Name + Semester + Shift to find existing course 
+            # (Matches your university's "Lab" vs "Theory" structure)
+            semester_val = clean_row.get('Semester')
             course = Course.query.filter_by(name=course_name, semester_code=semester_val).first()
             
             if not course:
-                # Generate Random 5-Digit Class Code
                 unique_class_code = str(random.randint(10000, 99999))
-                
-                # Ensure code is truly unique
                 while Course.query.filter_by(class_code=unique_class_code).first():
                     unique_class_code = str(random.randint(10000, 99999))
 
-                # Handle Semester ID (Foreign Key)
-                default_semester = Semester.query.first()
-                sem_id = default_semester.id if default_semester else 1
-
                 course = Course(
-                    name=course_name,                # "App of ICT - Lab"
-                    course_catalog_code=institute_code, # "CSC 101"
-                    class_code=unique_class_code,    # "56744" (Student Code)
+                    name=course_name,
+                    course_catalog_code=institute_code,
+                    class_code=unique_class_code,
                     teacher_id=teacher.id,
-                    semester_id=sem_id,
-                    
-                    # CSV Fields
-                    program=row.get('Program'),
+                    program=clean_row.get('Program'),
                     semester_code=semester_val,
-                    shift=row.get('Shift'),
-                    credit_hours=row.get('Credit Hours'),
-                    day=day,
-                    time_in=time_in,
-                    time_out=time_out,
-                    room=row.get('Room')
+                    shift=clean_row.get('Shift'),
+                    credit_hours=clean_row.get('Credit Hours'),
+                    day=clean_row.get('Day'),
+                    time_in=clean_row.get('Time In'),
+                    time_out=clean_row.get('Time Out'),
+                    room=clean_row.get('Room')
                 )
                 db.session.add(course)
                 report['courses_assigned'] += 1
             else:
-                # Update logic (if re-uploading)
+                # Update existing
                 course.teacher_id = teacher.id
-                course.day = day
-                course.time_in = time_in
-                course.time_out = time_out
-                course.room = row.get('Room')
+                course.day = clean_row.get('Day')
+                course.time_in = clean_row.get('Time In')
+                course.time_out = clean_row.get('Time Out')
+                course.room = clean_row.get('Room')
 
         db.session.commit()
         return jsonify({'message': 'Batch process complete', 'report': report}), 200
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ UPLOAD ERROR: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # ==========================================

@@ -21,12 +21,17 @@ def create_app():
 
     # 1. UPDATED CORS FIX
     # Added your Vercel URL so the browser allows the login request
+    # 1. UPDATED CORS FIX
+    # Explicitly allowing custom headers ensures the CSV upload doesn't get blocked
     CORS(app, resources={
         r"/*": {
             "origins": [
                 "http://localhost:5173", 
                 "https://ai-teaching-assistant-ecru.vercel.app"
-            ]
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "Bypass-Tunnel-Reminder"],
+            "expose_headers": ["Content-Type", "Authorization"]
         }
     }, supports_credentials=True)
 
