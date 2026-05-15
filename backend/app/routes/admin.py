@@ -79,7 +79,6 @@ def upload_schedule_csv():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    # Read and Decode with 'utf-8-sig' to remove Excel's BOM markers
     try:
         file_bytes = file.stream.read()
         try:
@@ -92,25 +91,29 @@ def upload_schedule_csv():
     except Exception as e:
         return jsonify({'error': f'Failed to read CSV: {str(e)}'}), 400
 
-    report = {'created_teachers': [], 'courses_assigned': 0, 'conflicts': [], 'errors': []}
+    # ✅ Tracking courses_created vs courses_updated explicitly
+    report = {
+        'created_teachers': [],
+        'courses_created': 0,
+        'courses_updated': 0,
+        'conflicts': [],
+        'errors': []
+    }
 
-    # ✅ FIX 1: Fetch active semester BEFORE looping. Guarantees non-null semester_id
     active_semester = Semester.query.filter_by(is_active=True).first() or Semester.query.first()
     if not active_semester:
-        return jsonify({'error': 'No active semester found. Please create a semester in the admin panel first.'}), 400
+        return jsonify({'error': 'No active semester found. Please create a semester first.'}), 400
     
     sem_id = active_semester.id
 
     try:
         for row_num, row in enumerate(csv_input, start=1):
-            # ✅ FIX 2: Strip outer spacing AND swap hidden newlines (\n) out of headers
             clean_row = {k.replace('\n', ' ').strip(): v.strip() for k, v in row.items() if k}
 
             instructor_name = clean_row.get('Instructor')
-            institute_code = clean_row.get('Course Code')  # Safely matches your file's "Course\nCode"
+            institute_code = clean_row.get('Course Code')
             course_name = clean_row.get('Course Name')
             
-            # Skip empty rows smoothly
             if not instructor_name or not course_name:
                 continue
 
@@ -119,7 +122,7 @@ def upload_schedule_csv():
             time_out = clean_row.get('Time Out')
             semester_val = clean_row.get('Semester')
 
-            # 2. TEACHER LOGIC
+            # TEACHER LOGIC
             email = generate_email(instructor_name)
             teacher = User.query.filter_by(email=email).first()
             
@@ -136,13 +139,13 @@ def upload_schedule_csv():
                     password_hash=generate_password_hash(temp_pass)
                 )
                 db.session.add(teacher)
-                db.session.flush() # Sync with session to get teacher.id immediately
+                db.session.flush()
                 
                 report['created_teachers'].append({
                     'name': instructor_name, 'email': email, 'password': temp_pass
                 })
 
-            # 3. COURSE LOGIC
+            # COURSE LOGIC
             course = Course.query.filter_by(name=course_name, semester_code=semester_val).first()
             
             if not course:
@@ -155,25 +158,26 @@ def upload_schedule_csv():
                     course_catalog_code=institute_code,
                     class_code=unique_class_code,
                     teacher_id=teacher.id,
-                    semester_id=sem_id,  # ✅ FIX 3: Assigning verified parent semester ID
+                    semester_id=sem_id,
                     program=clean_row.get('Program'),
                     semester_code=semester_val,
                     shift=clean_row.get('Shift'),
-                    credit_hours=clean_row.get('Credit Hours'),  # Safely matches your file's "Credit\nHours"
+                    credit_hours=clean_row.get('Credit Hours'),
                     day=day,
                     time_in=time_in,
                     time_out=time_out,
                     room=clean_row.get('Room')
                 )
                 db.session.add(course)
-                report['courses_assigned'] += 1
+                report['courses_created'] += 1  # Increments for brand-new insertions
             else:
-                # Update existing rows safely
+                # Update existing records safely
                 course.teacher_id = teacher.id
                 course.day = day
                 course.time_in = time_in
                 course.time_out = time_out
                 course.room = clean_row.get('Room')
+                report['courses_updated'] += 1  # ✅ Increments for safe overwrites/updates
 
         db.session.commit()
         return jsonify({'message': 'Batch process complete', 'report': report}), 200
@@ -181,7 +185,7 @@ def upload_schedule_csv():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-    
+        
 # ==========================================
 # 2. SYSTEM OVERVIEW (Analytics)
 # ==========================================

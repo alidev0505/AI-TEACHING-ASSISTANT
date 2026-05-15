@@ -4,19 +4,19 @@ import { uploadSchedule } from '../../services/api';
 const AdminBatchUpload = ({ onUploadSuccess }) => {
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
-    // Initialize state with explicit schema structure to prevent undefined rendering mismatch
     const [report, setReport] = useState({
-        courses_assigned: 0,
+        courses_created: 0,
+        courses_updated: 0,
         created_teachers: [],
         conflicts: [],
         errors: []
     });
     const [showReport, setShowReport] = useState(false);
 
-    // 1. HELPER: Generate and Download Template CSV
+    // 1. ✅ FIXED: Generated template columns match your university timetable perfectly
     const downloadTemplate = () => {
-        const headers = 'Instructor,Course Code,Course Name,Day,Time In,Time Out,Semester,Program,Shift,Credit Hours,Room';
-        const sampleRow = 'Dr. Ali,CSC-101,Intro to ICT,Monday,09:00 AM,10:30 AM,I-A,BSCS,Morning,3,Lab-1';
+        const headers = 'Course Code,Program,Semester,Shift,Course Name,Credit Hours,Instructor,Day,Time In,Time Out,Room';
+        const sampleRow = 'MAT 101,BSDS,I-A,M,Calculus & Analytical Geometry,3:00,Ms. Nazia Sultana,Wednesday,2:00 PM,5:00 PM,IT-401';
         
         const csvContent = [headers, sampleRow].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -30,14 +30,12 @@ const AdminBatchUpload = ({ onUploadSuccess }) => {
         document.body.removeChild(link);
     };
 
-    // 2. HELPER: Generate and Download Credentials CSV (Post-Upload)
     const downloadCredentialsCSV = (teachers) => {
         if (!teachers || teachers.length === 0) {
             alert("No new teachers were created, so there are no credentials to download.");
             return;
         }
 
-        // ✅ FIXED: Changed array string wrapper to simple clean string definition
         const headers = 'Teacher Name,Email,Temporary Password';
         const rows = teachers.map(t => `"${t.name}","${t.email}","${t.password}"`);
         const csvContent = [headers, ...rows].join('\n');
@@ -68,12 +66,11 @@ const AdminBatchUpload = ({ onUploadSuccess }) => {
         setLoading(true);
         try {
             const res = await uploadSchedule(formData);
-            console.log("Full Upload Report:", res.data.report);
-            
-            // ✅ FIXED: Merge with default fallback model to secure accurate parsing fields
             const serverReport = res.data.report || {};
+            
             setReport({
-                courses_assigned: serverReport.courses_assigned || 0,
+                courses_created: serverReport.courses_created || 0,
+                courses_updated: serverReport.courses_updated || 0,
                 created_teachers: serverReport.created_teachers || [],
                 conflicts: serverReport.conflicts || [],
                 errors: serverReport.errors || []
@@ -161,15 +158,19 @@ const AdminBatchUpload = ({ onUploadSuccess }) => {
                         <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>Success</span>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
-                        <div style={{ padding: '15px', background: '#f8fafc', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                            {/* ✅ FIXED: Safer rendering properties parsing tracking values directly */}
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#334155' }}>{report.courses_assigned}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Courses Added/Updated</div>
+                    {/* ✅ FIXED: Clean 3-column stats panel grid layout */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '25px' }}>
+                        <div style={{ padding: '12px 5px', background: '#f8fafc', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#2563eb' }}>{report.courses_created}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '3px' }}>New Courses</div>
                         </div>
-                        <div style={{ padding: '15px', background: '#f8fafc', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#334155' }}>{report.created_teachers.length}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>New Accounts Created</div>
+                        <div style={{ padding: '12px 5px', background: '#f8fafc', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#0d9488' }}>{report.courses_updated}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '3px' }}>Updated Rows</div>
+                        </div>
+                        <div style={{ padding: '12px 5px', background: '#f8fafc', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#4f46e5' }}>{report.created_teachers.length}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '3px' }}>New Teachers</div>
                         </div>
                     </div>
 
@@ -184,7 +185,7 @@ const AdminBatchUpload = ({ onUploadSuccess }) => {
                                     Download CSV
                                 </button>
                             </div>
-                            <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                            <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                                 <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
                                     <tbody>
                                         {report.created_teachers.map((t, index) => (
@@ -199,10 +200,9 @@ const AdminBatchUpload = ({ onUploadSuccess }) => {
                         </div>
                     )}
 
-                    {/* ✅ EXTRA STABILITY: Safe parsing evaluation display logic check */}
                     {report.conflicts && report.conflicts.length > 0 && (
                         <div style={{ padding: '15px', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fef3c7', color: '#b45309', marginBottom: '15px' }}>
-                            <strong style={{ display: 'block', marginBottom: '5px' }}>Schedule Conflicts Ignored:</strong>
+                            <strong style={{ display: 'block', marginBottom: '5px' }}>Time Conflicts Ignored:</strong>
                             <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem' }}>
                                 {report.conflicts.map((conf, i) => <li key={i}>{conf}</li>)}
                             </ul>
@@ -219,7 +219,6 @@ const AdminBatchUpload = ({ onUploadSuccess }) => {
                     )}
                 </div>
             ) : (
-                {/* --- PLACEHOLDER WHEN NO REPORT --- */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #e2e8f0', borderRadius: '16px', color: '#94a3b8', background: '#f8fafc', minHeight: '300px' }}>
                     <div style={{ textAlign: 'center' }}>
                         <p style={{ margin: 0 }}>Upload a file to view processing results</p>

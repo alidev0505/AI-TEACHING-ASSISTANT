@@ -24,13 +24,14 @@ const AdminUsers = () => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [userRes, courseRes] = await Promise.all([
-          getUsers(),
-          fetchCoursesData()
-      ]);
+      // ✅ FIXED 1: Run requests cleanly. Separating axios calls eliminates promise formatting mismatch errors
+      const userRes = await getUsers();
       setUsers(userRes.data.users || []);
+      
+      // Load courses down the line seamlessly
+      await fetchCoursesData();
     } catch (err) {
-      console.error(err);
+      console.error("Data load failed:", err);
     } finally {
       setLoading(false);
     }
@@ -42,11 +43,12 @@ const AdminUsers = () => {
 
   const fetchCoursesData = async () => {
     try {
-        const res = await getAdminCourses(); // This uses your Azure URL automatically
+        const res = await getAdminCourses();
         setCourses(res.data.courses || []);
-        return res.data;
-  } catch (err) { console.error(err); }
-};
+    } catch (err) { 
+        console.error("Course load failed:", err); 
+    }
+  };
 
   /* ===================== FILTER & PAGINATION LOGIC ===================== */
   
@@ -59,9 +61,9 @@ const AdminUsers = () => {
 
   // 2. Filter Courses
   const filteredCourses = courses.filter(c => 
-    c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
-    c.teacher_name.toLowerCase().includes(courseSearch.toLowerCase()) ||
-    c.class_code.includes(courseSearch) ||
+    (c.name && c.name.toLowerCase().includes(courseSearch.toLowerCase())) ||
+    (c.teacher_name && c.teacher_name.toLowerCase().includes(courseSearch.toLowerCase())) ||
+    (c.class_code && c.class_code.includes(courseSearch)) ||
     (c.course_catalog_code && c.course_catalog_code.toLowerCase().includes(courseSearch.toLowerCase()))
   );
 
@@ -96,13 +98,17 @@ const AdminUsers = () => {
       const res = await deleteCourse(courseId); 
       if (res.status === 200 || res.status === 204) {
         setCourses(courses.filter(c => c.id !== courseId));
+        // Reset to page 1 if current page becomes empty after deletion
+        if (currentItems.length === 1 && currentPage > 1) {
+            setCurrentPage(prev => prev - 1);
+        }
       } else { 
         alert("Failed to delete course"); 
       }
     } catch (err) { 
       console.error(err); 
     }
-  }; // <--- ADDED MISSING CLOSING BRACES HERE
+  };
 
   const getRoleStyle = (role) => {
     switch(role) {
@@ -153,12 +159,12 @@ const AdminUsers = () => {
             <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
                 <TabButton 
                     active={activeTab === 'users'} 
-                    onClick={() => { setActiveTab('users'); setCurrentPage(1); }} 
+                    onClick={() => { setActiveTab('users'); setCurrentPage(1); }} // ✅ FIXED 2: Reset page indexing on layout swap
                     label="User Management" 
                 />
                 <TabButton 
                     active={activeTab === 'courses'} 
-                    onClick={() => { setActiveTab('courses'); setCurrentPage(1); }} 
+                    onClick={() => { setActiveTab('courses'); setCurrentPage(1); }} // ✅ FIXED 2: Reset page indexing on layout swap
                     label="Course Catalog" 
                 />
             </div>
@@ -166,7 +172,7 @@ const AdminUsers = () => {
             {/* TOOLBAR (Search & Count) */}
             <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
                 <p style={{ margin: 0, fontWeight: '600', color: '#64748b' }}>
-                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, dataToPaginate.length)} of {dataToPaginate.length} records
+                    Showing {dataToPaginate.length === 0 ? 0 : indexOfFirstItem + 1}-{Math.min(indexOfLastItem, dataToPaginate.length)} of {dataToPaginate.length} records
                 </p>
                 <input 
                     type="text" 
@@ -197,7 +203,8 @@ const AdminUsers = () => {
                                     <th style={thStyle}>Instructor</th>
                                     <th style={{...thStyle, textAlign: 'right'}}>Actions</th>
                                 </>
-                            )}
+                            )
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -235,7 +242,7 @@ const AdminUsers = () => {
                         onClick={() => paginate(currentPage - 1)} 
                         disabled={currentPage === 1}
                         className="btn-secondary"
-                        style={{ padding: '5px 15px', fontSize: '0.9rem', opacity: currentPage === 1 ? 0.5 : 1 }}
+                        style={{ padding: '5px 15px', fontSize: '0.9rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
                     >
                         Previous
                     </button>
@@ -246,7 +253,7 @@ const AdminUsers = () => {
                         onClick={() => paginate(currentPage + 1)} 
                         disabled={currentPage === totalPages}
                         className="btn-secondary"
-                        style={{ padding: '5px 15px', fontSize: '0.9rem', opacity: currentPage === totalPages ? 0.5 : 1 }}
+                        style={{ padding: '5px 15px', fontSize: '0.9rem', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
                     >
                         Next
                     </button>
@@ -259,10 +266,10 @@ const AdminUsers = () => {
   );
 };
 
-// --- SUB COMPONENTS FOR CLEANER CODE ---
+// --- SUB COMPONENTS ---
 
 const StatCard = ({ title, value, icon, color }) => (
-    <div className="card" style={{ padding: '20px', background: 'white', borderRadius: '12px', borderLeft: `5px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="card" style={{ padding: '20px', background: 'white', borderRadius: '12px', borderLeft: `5px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
         <div>
             <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>{title}</p>
             <h3 style={{ margin: 0, fontSize: '1.8rem', color: '#1e293b' }}>{value}</h3>
@@ -308,7 +315,7 @@ const UserRow = ({ user, onRoleChange, onDelete, getRoleStyle }) => (
             </select>
         </td>
         <td style={{ padding: '15px 20px', textAlign: 'right' }}>
-            <button onClick={() => onDelete(user.id, user.username)} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+            <button onClick={() => onDelete(user.id, user.username)} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.85rem', cursor: 'pointer' }}>
                 Delete
             </button>
         </td>
@@ -325,11 +332,11 @@ const CourseRow = ({ course, onDelete }) => (
             </div>
         </td>
         <td style={{ padding: '15px 20px' }}>
-            <div style={{ color: '#334155' }}>{course.teacher_name}</div>
-            <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{course.teacher_email}</div>
+            <div style={{ color: '#334155', fontWeight: '500' }}>{course.teacher_name || "Unassigned"}</div>
+            <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{course.teacher_email || "N/A"}</div>
         </td>
         <td style={{ padding: '15px 20px', textAlign: 'right' }}>
-            <button onClick={() => onDelete(course.id, course.name)} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+            <button onClick={() => onDelete(course.id, course.name)} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.85rem', cursor: 'pointer' }}>
                 Delete
             </button>
         </td>
