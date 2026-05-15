@@ -76,31 +76,48 @@ def upload_schedule_csv():
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
-    
-    # 1. Read and Decode with 'utf-8-sig' to remove Excel's BOM markers
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    # Read and Decode with 'utf-8-sig' to remove Excel's BOM markers
     try:
         file_bytes = file.stream.read()
-        decoded_file = file_bytes.decode('utf-8-sig')
+        try:
+            decoded_file = file_bytes.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            decoded_file = file_bytes.decode('latin-1')
+
         stream = io.StringIO(decoded_file, newline=None)
-        # Use strip on keys to handle "Course Code " vs "Course Code"
         csv_input = csv.DictReader(stream)
     except Exception as e:
         return jsonify({'error': f'Failed to read CSV: {str(e)}'}), 400
 
     report = {'created_teachers': [], 'courses_assigned': 0, 'conflicts': [], 'errors': []}
 
+    # ✅ FIX 1: Fetch active semester BEFORE looping. Guarantees non-null semester_id
+    active_semester = Semester.query.filter_by(is_active=True).first() or Semester.query.first()
+    if not active_semester:
+        return jsonify({'error': 'No active semester found. Please create a semester in the admin panel first.'}), 400
+    
+    sem_id = active_semester.id
+
     try:
         for row_num, row in enumerate(csv_input, start=1):
-            # Clean keys to be safe against trailing spaces in CSV headers
-            clean_row = {k.strip(): v.strip() for k, v in row.items() if k}
+            # ✅ FIX 2: Strip outer spacing AND swap hidden newlines (\n) out of headers
+            clean_row = {k.replace('\n', ' ').strip(): v.strip() for k, v in row.items() if k}
 
             instructor_name = clean_row.get('Instructor')
-            institute_code = clean_row.get('Course Code')
+            institute_code = clean_row.get('Course Code')  # Safely matches your file's "Course\nCode"
             course_name = clean_row.get('Course Name')
             
-            # Skip empty rows
+            # Skip empty rows smoothly
             if not instructor_name or not course_name:
                 continue
+
+            day = clean_row.get('Day')
+            time_in = clean_row.get('Time In')
+            time_out = clean_row.get('Time Out')
+            semester_val = clean_row.get('Semester')
 
             # 2. TEACHER LOGIC
             email = generate_email(instructor_name)
@@ -119,16 +136,13 @@ def upload_schedule_csv():
                     password_hash=generate_password_hash(temp_pass)
                 )
                 db.session.add(teacher)
-                db.session.flush() # Get ID without committing entire batch
+                db.session.flush() # Sync with session to get teacher.id immediately
                 
                 report['created_teachers'].append({
                     'name': instructor_name, 'email': email, 'password': temp_pass
                 })
 
             # 3. COURSE LOGIC
-            # Use Course Name + Semester + Shift to find existing course 
-            # (Matches your university's "Lab" vs "Theory" structure)
-            semester_val = clean_row.get('Semester')
             course = Course.query.filter_by(name=course_name, semester_code=semester_val).first()
             
             if not course:
@@ -141,23 +155,24 @@ def upload_schedule_csv():
                     course_catalog_code=institute_code,
                     class_code=unique_class_code,
                     teacher_id=teacher.id,
+                    semester_id=sem_id,  # ✅ FIX 3: Assigning verified parent semester ID
                     program=clean_row.get('Program'),
                     semester_code=semester_val,
                     shift=clean_row.get('Shift'),
-                    credit_hours=clean_row.get('Credit Hours'),
-                    day=clean_row.get('Day'),
-                    time_in=clean_row.get('Time In'),
-                    time_out=clean_row.get('Time Out'),
+                    credit_hours=clean_row.get('Credit Hours'),  # Safely matches your file's "Credit\nHours"
+                    day=day,
+                    time_in=time_in,
+                    time_out=time_out,
                     room=clean_row.get('Room')
                 )
                 db.session.add(course)
                 report['courses_assigned'] += 1
             else:
-                # Update existing
+                # Update existing rows safely
                 course.teacher_id = teacher.id
-                course.day = clean_row.get('Day')
-                course.time_in = clean_row.get('Time In')
-                course.time_out = clean_row.get('Time Out')
+                course.day = day
+                course.time_in = time_in
+                course.time_out = time_out
                 course.room = clean_row.get('Room')
 
         db.session.commit()
@@ -166,7 +181,7 @@ def upload_schedule_csv():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
+    
 # ==========================================
 # 2. SYSTEM OVERVIEW (Analytics)
 # ==========================================
